@@ -1,0 +1,82 @@
+User
+   │
+   └── hasOne Contact
+              │
+              ├── hasMany Borrowings
+              │
+              └── hasMany Item Histories
+
+
+Category
+   │
+   └── hasMany Items
+
+
+Location
+   │
+   └── hasMany Items
+
+
+Item
+   ├── belongsTo Category
+   ├── belongsTo Location
+   ├── hasMany Borrowings
+   ├── hasOne Current Borrowing
+   └── hasMany Item Histories
+
+
+Borrowing
+   ├── belongsTo Item
+   └── belongsTo Contact
+
+
+ItemHistory
+   ├── belongsTo Item
+   └── belongsTo Contact
+
+
+
+
+                         ┌──────────────┐
+                         │     User     │
+                         └──────┬───────┘
+                                │ hasOne
+                                ▼
+                         ┌──────────────┐
+                         │   Contact    │
+                         └──────┬───────┘
+                                │
+                    ┌───────────┴───────────┐
+                    │                       │
+               hasMany                  hasMany
+                    │                       │
+                    ▼                       ▼
+             ┌─────────────┐       ┌───────────────┐
+             │  Borrowing  │       │  ItemHistory  │
+             └──────┬──────┘       └───────┬───────┘
+                    │                      │
+                 belongsTo              belongsTo
+                    │                      │
+                    └──────────┬───────────┘
+                               ▼
+                         ┌─────────────┐
+                         │    Item     │
+                         └──────┬──────┘
+                                │
+                   ┌────────────┴────────────┐
+                   │                         │
+               belongsTo                 belongsTo
+                   │                         │
+                   ▼                         ▼
+             ┌────────────┐            ┌────────────┐
+             │  Category  │            │  Location  │
+             └────────────┘            └────────────┘
+
+
+Who borrowed my item? → Item → CurrentBorrowing → Contact → User
+
+What does John have? → User → Contact → Borrowings → Items
+
+Where is my item? → Item → Location
+
+Where has my item been? → Item → ItemHistories
