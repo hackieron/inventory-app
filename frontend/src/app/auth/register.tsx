@@ -59,7 +59,7 @@ export default function RegisterScreen() {
         password_confirmation: passwordConfirmation,
       });
       await saveToken(response.token);
-      router.replace('/app/home');
+      router.replace('/app/tabs/home');
     } catch (error: any) {
       const apiErrors = error.response?.data?.errors;
       if (apiErrors) {

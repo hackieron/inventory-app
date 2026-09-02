@@ -6,6 +6,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -35,8 +36,12 @@ class User extends Authenticatable
         ];
     }
 
-    public function contact(): HasOne
+    public function contacts(): HasMany
     {
-        return $this->hasOne(Contact::class);
+        return $this->hasMany(Contact::class);
+    }
+    public function items(): HasMany
+    {
+        return $this->hasMany(Item::class);
     }
 }

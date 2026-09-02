@@ -12,6 +12,218 @@
         }
     ],
     "paths": {
+        "/api/register": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Register a new user",
+                "operationId": "register",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "email",
+                                    "password",
+                                    "password_confirmation"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "John Doe"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "john@example.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "password123"
+                                    },
+                                    "password_confirmation": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "password123"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "User registered successfully"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/api/login": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Login user",
+                "operationId": "login",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "john@example.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "password123"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Login successful"
+                    },
+                    "422": {
+                        "description": "Invalid credentials"
+                    }
+                }
+            }
+        },
+        "/api/logout": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Logout user",
+                "operationId": "logout",
+                "responses": {
+                    "200": {
+                        "description": "Logout successful"
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    }
+                }
+            }
+        },
+        "/api/user": {
+            "get": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Get authenticated user",
+                "operationId": "getAuthenticatedUser",
+                "responses": {
+                    "200": {
+                        "description": "Authenticated user"
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    }
+                }
+            }
+        },
+        "/api/items/{item}/borrow": {
+            "post": {
+                "tags": [
+                    "Borrowings"
+                ],
+                "summary": "Borrow an item",
+                "description": "Creates a borrowing record for an item owned by the authenticated user.",
+                "operationId": "borrowItem",
+                "responses": {
+                    "201": {
+                        "description": "Item borrowed successfully"
+                    },
+                    "404": {
+                        "description": "Item not found"
+                    },
+                    "409": {
+                        "description": "Item is already borrowed"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/api/borrowings/{borrowing}/return": {
+            "post": {
+                "tags": [
+                    "Borrowings"
+                ],
+                "summary": "Return an item",
+                "description": "Marks an active borrowing as returned.",
+                "operationId": "returnItem",
+                "responses": {
+                    "200": {
+                        "description": "Item returned successfully"
+                    },
+                    "404": {
+                        "description": "Borrowing not found"
+                    },
+                    "409": {
+                        "description": "Item has already been returned"
+                    }
+                }
+            }
+        },
+        "/api/items/{item}/borrowings": {
+            "get": {
+                "tags": [
+                    "Borrowings"
+                ],
+                "summary": "Get item borrowing history",
+                "description": "Returns the borrowing history of an item owned by the authenticated user.",
+                "operationId": "getItemBorrowings",
+                "responses": {
+                    "200": {
+                        "description": "Borrowing history retrieved successfully"
+                    },
+                    "404": {
+                        "description": "Item not found"
+                    }
+                }
+            }
+        },
+        "/api/borrowings/{borrowing}": {
+            "get": {
+                "tags": [
+                    "Borrowings"
+                ],
+                "summary": "Get a borrowing",
+                "description": "Returns a specific borrowing belonging to an item owned by the authenticated user.",
+                "operationId": "getBorrowing",
+                "responses": {
+                    "200": {
+                        "description": "Borrowing retrieved successfully"
+                    },
+                    "404": {
+                        "description": "Borrowing not found"
+                    }
+                }
+            }
+        },
         "/api/categories": {
             "get": {
                 "tags": [
@@ -26,12 +238,203 @@
                     }
                 }
             }
+        },
+        "/api/auth/google": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Authenticate with Google",
+                "operationId": "googleLogin",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "id_token"
+                                ],
+                                "properties": {
+                                    "id_token": {
+                                        "description": "Google ID token received from the mobile application",
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Google authentication successful"
+                    },
+                    "401": {
+                        "description": "Invalid Google token"
+                    }
+                }
+            }
+        },
+        "/api/items": {
+            "get": {
+                "tags": [
+                    "Items"
+                ],
+                "summary": "Get all items",
+                "description": "Returns all inventory items belonging to the authenticated user.",
+                "operationId": "getItems",
+                "responses": {
+                    "200": {
+                        "description": "Items retrieved successfully"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Items"
+                ],
+                "summary": "Create a new item",
+                "description": "Creates a new inventory item for the authenticated user.",
+                "operationId": "createItem",
+                "responses": {
+                    "201": {
+                        "description": "Item created successfully"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/api/items/{item}": {
+            "get": {
+                "tags": [
+                    "Items"
+                ],
+                "summary": "Get a specific item",
+                "description": "Returns a specific inventory item belonging to the authenticated user.",
+                "operationId": "getItem",
+                "responses": {
+                    "200": {
+                        "description": "Item retrieved successfully"
+                    },
+                    "404": {
+                        "description": "Item not found"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Items"
+                ],
+                "summary": "Update an item",
+                "description": "Updates an inventory item belonging to the authenticated user.",
+                "operationId": "updateItem",
+                "responses": {
+                    "200": {
+                        "description": "Item updated successfully"
+                    },
+                    "404": {
+                        "description": "Item not found"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Items"
+                ],
+                "summary": "Delete an item",
+                "description": "Deletes an inventory item belonging to the authenticated user.",
+                "operationId": "deleteItem",
+                "responses": {
+                    "200": {
+                        "description": "Item deleted successfully"
+                    },
+                    "404": {
+                        "description": "Item not found"
+                    }
+                }
+            }
+        },
+        "/api/items/{item}/history": {
+            "get": {
+                "tags": [
+                    "Item History"
+                ],
+                "summary": "Get item history",
+                "description": "Returns the history of an item belonging to the authenticated user.",
+                "operationId": "getItemHistory",
+                "responses": {
+                    "200": {
+                        "description": "Item history retrieved successfully"
+                    },
+                    "404": {
+                        "description": "Item not found"
+                    }
+                }
+            }
+        },
+        "/api/items/{item}/history/{history}": {
+            "get": {
+                "tags": [
+                    "Item History"
+                ],
+                "summary": "Get a specific history entry",
+                "description": "Returns a specific history entry belonging to an item owned by the authenticated user.",
+                "operationId": "getItemHistoryEntry",
+                "responses": {
+                    "200": {
+                        "description": "History entry retrieved successfully"
+                    },
+                    "404": {
+                        "description": "History entry not found"
+                    }
+                }
+            }
+        },
+        "/api/locations": {
+            "get": {
+                "tags": [
+                    "Locations"
+                ],
+                "summary": "Get all locations",
+                "description": "Returns all inventory locations.",
+                "operationId": "getLocations",
+                "responses": {
+                    "200": {
+                        "description": "Locations retrieved successfully"
+                    }
+                }
+            }
         }
     },
     "tags": [
         {
+            "name": "Authentication",
+            "description": "Authentication"
+        },
+        {
+            "name": "Borrowings",
+            "description": "Borrowings"
+        },
+        {
             "name": "Categories",
             "description": "Categories"
+        },
+        {
+            "name": "Items",
+            "description": "Items"
+        },
+        {
+            "name": "Item History",
+            "description": "Item History"
+        },
+        {
+            "name": "Locations",
+            "description": "Locations"
         }
     ]
 }

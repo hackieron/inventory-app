@@ -47,7 +47,7 @@ export default function LoginScreen() {
       setLoading(true);
       const response = await login({ email: email.trim(), password });
       await saveToken(response.token);
-      router.replace('/app/home');
+      router.replace('/app/tabs/home');
     } catch (error: any) {
       const apiErrors = error.response?.data?.errors;
       if (apiErrors) {

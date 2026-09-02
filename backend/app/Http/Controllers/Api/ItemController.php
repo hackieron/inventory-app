@@ -6,53 +6,77 @@ use App\Http\Controllers\Controller;
 use App\Models\Item;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use OpenApi\Attributes as OA;
 
 class ItemController extends Controller
 {
+
+    #[OA\Get(
+        path: '/api/items',
+        operationId: 'getItems',
+        summary: 'Get all items',
+        description: 'Returns all inventory items belonging to the authenticated user.',
+        tags: ['Items'],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Items retrieved successfully'
+            )
+        ]
+    )]
     /**
-     * Display a listing of items.
+     * Display a listing of the user's items.
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Item::with([
-            'category',
-            'location',
-            'currentBorrowing.contact',
-        ]);
-
-        // Search by item name or serial number
-        if ($request->filled('search')) {
-            $search = $request->input('search');
-
-            $query->where(function ($query) use ($search) {
-                $query->where('name', 'like', "%{$search}%")
-                    ->orWhere('serial_number', 'like', "%{$search}%");
-            });
-        }
-
-        // Filter by category
-        if ($request->filled('category_id')) {
-            $query->where('category_id', $request->category_id);
-        }
-
-        // Filter by location
-        if ($request->filled('location_id')) {
-            $query->where('location_id', $request->location_id);
-        }
-
-        // Filter by status
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        $items = $query
+        $items = $request->user()
+            ->items()
+            ->with([
+                'category',
+                'location',
+                'currentBorrowing.contact',
+            ])
             ->latest()
-            ->paginate(20);
+            ->get();
 
-        return response()->json($items);
+        return response()->json([
+            'data' => $items,
+        ]);
     }
+    public function discover(Request $request): JsonResponse
+    {
+        $items = Item::query()
+            ->where('is_borrowable', true)
+            ->where('status', 'stored')
+            ->with([
+                'category',
+                'location',
+                'currentBorrowing.contact',
+            ])
+            ->latest()
+            ->get();
 
+        return response()->json([
+            'data' => $items,
+        ]);
+    }
+    #[OA\Post(
+        path: '/api/items',
+        operationId: 'createItem',
+        summary: 'Create a new item',
+        description: 'Creates a new inventory item for the authenticated user.',
+        tags: ['Items'],
+        responses: [
+            new OA\Response(
+                response: 201,
+                description: 'Item created successfully'
+            ),
+            new OA\Response(
+                response: 422,
+                description: 'Validation error'
+            )
+        ]
+    )]
     /**
      * Store a newly created item.
      */
@@ -61,58 +85,66 @@ class ItemController extends Controller
         $validated = $request->validate([
             'category_id' => [
                 'nullable',
+                'integer',
                 'exists:categories,id',
             ],
+
             'location_id' => [
                 'nullable',
+                'integer',
                 'exists:locations,id',
             ],
+
             'name' => [
                 'required',
                 'string',
                 'max:255',
             ],
+
             'serial_number' => [
                 'nullable',
                 'string',
                 'max:255',
                 'unique:items,serial_number',
             ],
-            'status' => [
-                'nullable',
-                'string',
-                Rule::in([
-                    'stored',
-                    'borrowed',
-                    'lost',
-                    'damaged',
-                ]),
-            ],
+
             'purchase_date' => [
                 'nullable',
                 'date',
             ],
+
             'image' => [
                 'nullable',
                 'string',
                 'max:255',
             ],
+
             'description' => [
                 'nullable',
                 'string',
             ],
+
             'notes' => [
                 'nullable',
                 'string',
             ],
+            'is_borrowable' =>
+                'integer'
         ]);
 
-        $item = Item::create($validated);
+        /*
+         * New items always start as "stored".
+         * Borrowing will handle the borrowed status later.
+         */
+        $validated['status'] = 'stored';
+
+        $item = $request->user()
+            ->items()
+            ->create($validated);
 
         $item->load([
             'category',
             'location',
-            'currentBorrowing.contact',
         ]);
 
         return response()->json([
@@ -121,87 +153,167 @@ class ItemController extends Controller
         ], 201);
     }
 
+    #[OA\Get(
+        path: '/api/items/{item}',
+        operationId: 'getItem',
+        summary: 'Get a specific item',
+        description: 'Returns a specific inventory item belonging to the authenticated user.',
+        tags: ['Items'],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Item retrieved successfully'
+            ),
+            new OA\Response(
+                response: 404,
+                description: 'Item not found'
+            )
+        ]
+    )]
     /**
      * Display the specified item.
      */
-    public function show(Item $item): JsonResponse
-    {
-        $item->load([
-            'category',
-            'location',
-            'borrowings.contact',
-            'histories.contact',
-            'currentBorrowing.contact',
-        ]);
+    public function show(
+        Request $request,
+        int $item
+    ): JsonResponse {
+        $item = $request->user()
+            ->items()
+            ->with([
+                'category',
+                'location',
+                'currentBorrowing.contact',
+                'histories.contact',
+            ])
+            ->findOrFail($item);
 
         return response()->json([
             'data' => $item,
         ]);
     }
 
+    #[OA\Put(
+        path: '/api/items/{item}',
+        operationId: 'updateItem',
+        summary: 'Update an item',
+        description: 'Updates an inventory item belonging to the authenticated user.',
+        tags: ['Items'],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Item updated successfully'
+            ),
+            new OA\Response(
+                response: 404,
+                description: 'Item not found'
+            ),
+            new OA\Response(
+                response: 422,
+                description: 'Validation error'
+            )
+        ]
+    )]
     /**
      * Update the specified item.
      */
-    public function update(Request $request, Item $item): JsonResponse
-    {
+    /**
+     * Update the specified item.
+     */
+    public function update(
+        Request $request,
+        int $item
+    ): JsonResponse {
+        $item = $request->user()
+            ->items()
+            ->findOrFail($item);
+
+        // Get the current location before updating
+        $oldLocation = $item->location?->name;
+
         $validated = $request->validate([
             'category_id' => [
                 'nullable',
+                'integer',
                 'exists:categories,id',
             ],
+
             'location_id' => [
                 'nullable',
+                'integer',
                 'exists:locations,id',
             ],
+
             'name' => [
-                'sometimes',
                 'required',
                 'string',
                 'max:255',
             ],
+
             'serial_number' => [
                 'nullable',
                 'string',
                 'max:255',
-                Rule::unique('items', 'serial_number')
-                    ->ignore($item->id),
+                'unique:items,serial_number,' . $item->id,
             ],
-            'status' => [
-                'nullable',
-                'string',
-                Rule::in([
-                    'stored',
-                    'borrowed',
-                    'lost',
-                    'damaged',
-                ]),
-            ],
+
             'purchase_date' => [
                 'nullable',
                 'date',
             ],
+
             'image' => [
                 'nullable',
                 'string',
                 'max:255',
             ],
+
             'description' => [
                 'nullable',
                 'string',
             ],
+
             'notes' => [
                 'nullable',
                 'string',
             ],
         ]);
 
+        // Update the item
         $item->update($validated);
 
+        // Reload the new location
         $item->load([
             'category',
             'location',
-            'currentBorrowing.contact',
         ]);
+
+        // Get the new location
+        $newLocation = $item->location?->name;
+
+        // Create history only if the location changed
+        if ($oldLocation !== $newLocation) {
+
+            $description = match (true) {
+                $oldLocation && $newLocation =>
+                "Item moved from {$oldLocation} to {$newLocation}.",
+
+                $oldLocation && !$newLocation =>
+                "Item removed from {$oldLocation}.",
+
+                !$oldLocation && $newLocation =>
+                "Item assigned to {$newLocation}.",
+
+                default =>
+                "Item location updated.",
+            };
+
+            $item->histories()->create([
+                'action' => 'moved',
+                'description' => $description,
+                'old_location' => $oldLocation,
+                'new_location' => $newLocation,
+            ]);
+        }
 
         return response()->json([
             'message' => 'Item updated successfully.',
@@ -209,15 +321,53 @@ class ItemController extends Controller
         ]);
     }
 
+    #[OA\Delete(
+        path: '/api/items/{item}',
+        operationId: 'deleteItem',
+        summary: 'Delete an item',
+        description: 'Deletes an inventory item belonging to the authenticated user.',
+        tags: ['Items'],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Item deleted successfully'
+            ),
+            new OA\Response(
+                response: 404,
+                description: 'Item not found'
+            )
+        ]
+    )]
     /**
      * Remove the specified item.
      */
-    public function destroy(Item $item): JsonResponse
-    {
+    public function destroy(
+        Request $request,
+        int $item
+    ): JsonResponse {
+        $item = $request->user()
+            ->items()
+            ->findOrFail($item);
+
         $item->delete();
 
         return response()->json([
             'message' => 'Item deleted successfully.',
         ]);
     }
+
+
+    public function makeItemBorrowable($id)
+    {
+        $item = Item::findOrFail($id);
+
+        $item->update([
+            'is_borrowable' => !$item->is_borrowable,
+        ]);
+
+        return response()->json([
+            'message' => "Item is now " . ($item->is_borrowable ? 'borrowable' : 'not borrowable'),
+            'is_borrowable' => $item->is_borrowable,
+        ]);
+    }   
 }
