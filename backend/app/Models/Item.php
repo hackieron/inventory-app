@@ -17,6 +17,7 @@ class Item extends Model
         'name',
         'serial_number',
         'status',
+        'is_borrowable',
         'purchase_date',
         'image',
         'description',
@@ -25,6 +26,7 @@ class Item extends Model
 
     protected $casts = [
         'purchase_date' => 'date',
+         'is_borrowable' => 'boolean',
     ];
 
     public function category(): BelongsTo
@@ -44,7 +46,7 @@ class Item extends Model
 
     public function histories(): HasMany
     {
-        return $this->hasMany(ItemHistory::class);
+        return $this->hasMany(ItemHistory::class)->latest('updated_at');
     }
 
     public function currentBorrowing()
@@ -52,5 +54,9 @@ class Item extends Model
         return $this->hasOne(Borrowing::class)
             ->whereNull('returned_at')
             ->latestOfMany('borrowed_at');
+    }
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 }

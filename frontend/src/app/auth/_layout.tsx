@@ -26,7 +26,7 @@ export default function AuthLayout() {
   }
 
   if (authenticated) {
-    return <Redirect href="/app/home" />;
+    return <Redirect href="/app/tabs/home" />;
   }
 
   return <Stack screenOptions={{ headerShown: false }} />;
