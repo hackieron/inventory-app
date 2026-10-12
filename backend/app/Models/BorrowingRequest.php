@@ -17,7 +17,9 @@ class BorrowingRequest extends Model
         'borrowed_at',
         'expected_return_at',
         'returned_at',
+        'requester_id',
         'notes',
+        'status'
     ];
 
     protected $casts = [
@@ -39,5 +41,9 @@ class BorrowingRequest extends Model
     public function returnRequests(): HasMany
     {
         return $this->hasMany(ReturnRequest::class);
+    }
+    public function requester(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'requester_id');
     }
 }

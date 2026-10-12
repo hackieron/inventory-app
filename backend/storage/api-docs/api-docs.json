@@ -206,6 +206,21 @@
                 }
             }
         },
+        "/api/borrowings": {
+            "get": {
+                "tags": [
+                    "Borrowings"
+                ],
+                "summary": "Get items borrowed by the authenticated user",
+                "description": "Returns all active and previous borrowings where the contact represents the authenticated user.",
+                "operationId": "getMyBorrowings",
+                "responses": {
+                    "200": {
+                        "description": "Borrowings retrieved successfully"
+                    }
+                }
+            }
+        },
         "/api/borrowings/{borrowing}": {
             "get": {
                 "tags": [
@@ -224,6 +239,120 @@
                 }
             }
         },
+        "/api/borrowing-requests/incoming": {
+            "get": {
+                "tags": [
+                    "Borrowing Requests"
+                ],
+                "summary": "Get incoming borrowing requests",
+                "description": "Get borrowing requests received by the authenticated user.\n\nThese are requests for items owned by the authenticated user.",
+                "operationId": "getIncomingBorrowingRequests",
+                "responses": {
+                    "200": {
+                        "description": "Incoming borrowing requests retrieved successfully"
+                    }
+                }
+            }
+        },
+        "/api/borrowing-requests/my": {
+            "get": {
+                "tags": [
+                    "Borrowing Requests"
+                ],
+                "summary": "Get my borrowing requests",
+                "description": "Get borrowing requests made by the authenticated user.",
+                "operationId": "getMyBorrowingRequests",
+                "responses": {
+                    "200": {
+                        "description": "Borrowing requests retrieved successfully"
+                    }
+                }
+            }
+        },
+        "/api/items/{item}/borrowing-request": {
+            "post": {
+                "tags": [
+                    "Borrowing Requests"
+                ],
+                "summary": "Request to borrow an item",
+                "description": "Request to borrow an item.",
+                "operationId": "createBorrowingRequest",
+                "responses": {
+                    "201": {
+                        "description": "Borrowing request created successfully"
+                    },
+                    "403": {
+                        "description": "Item is not available for borrowing"
+                    },
+                    "409": {
+                        "description": "A request already exists or item is already borrowed"
+                    }
+                }
+            }
+        },
+        "/api/borrowing-requests/{borrowingRequest}/approve": {
+            "post": {
+                "tags": [
+                    "Borrowing Requests"
+                ],
+                "summary": "Approve borrowing request",
+                "description": "Approve a borrowing request.\n\nThis creates the actual Borrowing record.",
+                "operationId": "approveBorrowingRequest",
+                "responses": {
+                    "200": {
+                        "description": "Borrowing request approved successfully"
+                    },
+                    "403": {
+                        "description": "Unauthorized"
+                    },
+                    "409": {
+                        "description": "Request cannot be approved"
+                    }
+                }
+            }
+        },
+        "/api/borrowing-requests/{borrowingRequest}/reject": {
+            "post": {
+                "tags": [
+                    "Borrowing Requests"
+                ],
+                "summary": "Reject borrowing request",
+                "description": "Reject a borrowing request.",
+                "operationId": "rejectBorrowingRequest",
+                "responses": {
+                    "200": {
+                        "description": "Borrowing request rejected successfully"
+                    },
+                    "403": {
+                        "description": "Unauthorized"
+                    },
+                    "409": {
+                        "description": "Request has already been processed"
+                    }
+                }
+            }
+        },
+        "/api/borrowing-requests/{borrowingRequest}/cancel": {
+            "post": {
+                "tags": [
+                    "Borrowing Requests"
+                ],
+                "summary": "Cancel borrowing request",
+                "description": "Cancel a borrowing request.\n\nOnly the requester can cancel it.",
+                "operationId": "cancelBorrowingRequest",
+                "responses": {
+                    "200": {
+                        "description": "Borrowing request cancelled successfully"
+                    },
+                    "403": {
+                        "description": "Unauthorized"
+                    },
+                    "409": {
+                        "description": "Request has already been processed"
+                    }
+                }
+            }
+        },
         "/api/categories": {
             "get": {
                 "tags": [
@@ -235,6 +364,90 @@
                 "responses": {
                     "200": {
                         "description": "Categories retrieved successfully"
+                    }
+                }
+            }
+        },
+        "/api/contacts": {
+            "get": {
+                "tags": [
+                    "Contacts"
+                ],
+                "summary": "Get all contacts",
+                "description": "Returns all contacts belonging to the authenticated user.",
+                "operationId": "getContacts",
+                "responses": {
+                    "200": {
+                        "description": "Contacts retrieved successfully"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Contacts"
+                ],
+                "summary": "Create a contact",
+                "description": "Creates a contact for the authenticated user.",
+                "operationId": "createContact",
+                "responses": {
+                    "201": {
+                        "description": "Contact created successfully"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/api/contacts/{contact}": {
+            "get": {
+                "tags": [
+                    "Contacts"
+                ],
+                "summary": "Get a contact",
+                "description": "Returns a specific contact belonging to the authenticated user.",
+                "operationId": "getContact",
+                "responses": {
+                    "200": {
+                        "description": "Contact retrieved successfully"
+                    },
+                    "404": {
+                        "description": "Contact not found"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Contacts"
+                ],
+                "summary": "Update a contact",
+                "description": "Updates a contact belonging to the authenticated user.",
+                "operationId": "updateContact",
+                "responses": {
+                    "200": {
+                        "description": "Contact updated successfully"
+                    },
+                    "404": {
+                        "description": "Contact not found"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Contacts"
+                ],
+                "summary": "Delete a contact",
+                "description": "Deletes a contact belonging to the authenticated user.",
+                "operationId": "deleteContact",
+                "responses": {
+                    "200": {
+                        "description": "Contact deleted successfully"
+                    },
+                    "404": {
+                        "description": "Contact not found"
                     }
                 }
             }
@@ -409,6 +622,120 @@
                     }
                 }
             }
+        },
+        "/api/return-requests/incoming": {
+            "get": {
+                "tags": [
+                    "Return Requests"
+                ],
+                "summary": "Get incoming return requests",
+                "description": "Get return requests received by the authenticated user.\n\nThese are requests for items owned by the authenticated user.",
+                "operationId": "getIncomingReturnRequests",
+                "responses": {
+                    "200": {
+                        "description": "Incoming return requests retrieved successfully"
+                    }
+                }
+            }
+        },
+        "/api/return-requests/my": {
+            "get": {
+                "tags": [
+                    "Return Requests"
+                ],
+                "summary": "Get my return requests",
+                "description": "Get return requests made by the authenticated user.",
+                "operationId": "getMyReturnRequests",
+                "responses": {
+                    "200": {
+                        "description": "Return requests retrieved successfully"
+                    }
+                }
+            }
+        },
+        "/api/borrowings/{borrowing}/return-request": {
+            "post": {
+                "tags": [
+                    "Return Requests"
+                ],
+                "summary": "Request to return an item",
+                "description": "Request to return a borrowed item.",
+                "operationId": "createReturnRequest",
+                "responses": {
+                    "201": {
+                        "description": "Return request created successfully"
+                    },
+                    "403": {
+                        "description": "Unauthorized"
+                    },
+                    "409": {
+                        "description": "A return request already exists or item is already returned"
+                    }
+                }
+            }
+        },
+        "/api/return-requests/{returnRequest}/approve": {
+            "post": {
+                "tags": [
+                    "Return Requests"
+                ],
+                "summary": "Approve return request",
+                "description": "Approve a return request.",
+                "operationId": "approveReturnRequest",
+                "responses": {
+                    "200": {
+                        "description": "Return request approved successfully"
+                    },
+                    "403": {
+                        "description": "Unauthorized"
+                    },
+                    "409": {
+                        "description": "Request cannot be approved"
+                    }
+                }
+            }
+        },
+        "/api/return-requests/{returnRequest}/reject": {
+            "post": {
+                "tags": [
+                    "Return Requests"
+                ],
+                "summary": "Reject return request",
+                "description": "Reject a return request.",
+                "operationId": "rejectReturnRequest",
+                "responses": {
+                    "200": {
+                        "description": "Return request rejected successfully"
+                    },
+                    "403": {
+                        "description": "Unauthorized"
+                    },
+                    "409": {
+                        "description": "Request has already been processed"
+                    }
+                }
+            }
+        },
+        "/api/return-requests/{returnRequest}/cancel": {
+            "post": {
+                "tags": [
+                    "Return Requests"
+                ],
+                "summary": "Cancel return request",
+                "description": "Cancel a return request.\n\nOnly the borrower can cancel it.",
+                "operationId": "cancelReturnRequest",
+                "responses": {
+                    "200": {
+                        "description": "Return request cancelled successfully"
+                    },
+                    "403": {
+                        "description": "Unauthorized"
+                    },
+                    "409": {
+                        "description": "Request has already been processed"
+                    }
+                }
+            }
         }
     },
     "tags": [
@@ -421,8 +748,16 @@
             "description": "Borrowings"
         },
         {
+            "name": "Borrowing Requests",
+            "description": "Borrowing Requests"
+        },
+        {
             "name": "Categories",
             "description": "Categories"
+        },
+        {
+            "name": "Contacts",
+            "description": "Contacts"
         },
         {
             "name": "Items",
@@ -435,6 +770,10 @@
         {
             "name": "Locations",
             "description": "Locations"
+        },
+        {
+            "name": "Return Requests",
+            "description": "Return Requests"
         }
     ]
 }
