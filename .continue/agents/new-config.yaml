@@ -1,0 +1,42 @@
+
+name: My Local Coding AI
+version: 1.0.0
+schema: v1
+
+models:
+  - name: Qwen3 8B Agent
+    provider: ollama
+    model: qwen3:8b
+    apiBase: http://localhost:11434
+    roles:
+      - chat
+      - edit
+      - apply
+    capabilities:
+      - tool_use
+    defaultCompletionOptions:
+      contextLength: 8192
+      temperature: 0.2
+
+  - name: Qwen2.5 Coder 7B
+    provider: ollama
+    model: qwen2.5-coder:7b
+    apiBase: http://localhost:11434
+    roles:
+      - chat
+      - edit
+      - apply
+
+  - name: Gemma 3 Frontend Vision
+    provider: ollama
+    model: gemma3:4b
+    apiBase: http://localhost:11434
+    roles:
+      - chat
+      - edit
+      - apply
+    capabilities:
+      - image_input
+    defaultCompletionOptions:
+      contextLength: 8192
+      temperature: 0.2

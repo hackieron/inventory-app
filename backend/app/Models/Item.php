@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-
+use Illuminate\Support\Facades\Storage;
 class Item extends Model
 {
     use HasFactory;
@@ -26,9 +26,16 @@ class Item extends Model
 
     protected $casts = [
         'purchase_date' => 'date',
-         'is_borrowable' => 'boolean',
+        'is_borrowable' => 'boolean',
     ];
+    protected $appends = ['image_url'];
 
+    public function getImageUrlAttribute(): ?string
+    {
+        return $this->image
+            ? Storage::disk('public')->url($this->image)
+            : null;
+    }
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);

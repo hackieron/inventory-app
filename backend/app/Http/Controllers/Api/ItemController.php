@@ -115,8 +115,9 @@ class ItemController extends Controller
 
             'image' => [
                 'nullable',
-                'string',
-                'max:255',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120', // 5 MB
             ],
 
             'description' => [
@@ -295,16 +296,16 @@ class ItemController extends Controller
 
             $description = match (true) {
                 $oldLocation && $newLocation =>
-                "Item moved from {$oldLocation} to {$newLocation}.",
+                    "Item moved from {$oldLocation} to {$newLocation}.",
 
                 $oldLocation && !$newLocation =>
-                "Item removed from {$oldLocation}.",
+                    "Item removed from {$oldLocation}.",
 
                 !$oldLocation && $newLocation =>
-                "Item assigned to {$newLocation}.",
+                    "Item assigned to {$newLocation}.",
 
                 default =>
-                "Item location updated.",
+                    "Item location updated.",
             };
 
             $item->histories()->create([
@@ -369,5 +370,5 @@ class ItemController extends Controller
             'message' => "Item is now " . ($item->is_borrowable ? 'borrowable' : 'not borrowable'),
             'is_borrowable' => $item->is_borrowable,
         ]);
-    }   
+    }
 }

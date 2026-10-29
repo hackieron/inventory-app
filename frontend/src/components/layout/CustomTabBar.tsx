@@ -1,16 +1,22 @@
+
 import { useEffect, useRef, useState } from 'react';
 import {
   View,
-  TouchableOpacity,
+  Pressable,
+  Text,
   StyleSheet,
   Animated,
-  LayoutChangeEvent,
+  Easing,
   Platform,
+  LayoutChangeEvent,
 } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors } from '@/constants/theme';
 
-import { colors, spacing, radius } from '@/constants/theme';
+const BAR_HEIGHT = 68;
+const BAR_PADDING = 6;
+const HORIZONTAL_MARGIN = 20;
 
 export default function CustomTabBar({
   state,
@@ -21,56 +27,73 @@ export default function CustomTabBar({
   const [barWidth, setBarWidth] = useState(0);
 
   const indicatorX = useRef(new Animated.Value(0)).current;
-  const scales = useRef(state.routes.map(() => new Animated.Value(1))).current;
+  const indicatorOpacity = useRef(new Animated.Value(0)).current;
 
-  const tabWidth = barWidth / state.routes.length;
+  const scales = useRef(
+    state.routes.map(() => new Animated.Value(1))
+  ).current;
+
+  const tabWidth =
+    barWidth > 0
+      ? (barWidth - BAR_PADDING * 2) / state.routes.length
+      : 0;
 
   useEffect(() => {
-    if (barWidth === 0) return;
-    Animated.spring(indicatorX, {
-      toValue: state.index * tabWidth,
-      useNativeDriver: true,
-      speed: 16,
-      bounciness: 8,
-    }).start();
-  }, [state.index, barWidth]);
+    if (!tabWidth) return;
 
-  function handleLayout(e: LayoutChangeEvent) {
-    setBarWidth(e.nativeEvent.layout.width);
-  }
+    Animated.parallel([
+      Animated.spring(indicatorX, {
+        toValue: state.index * tabWidth,
+        damping: 19,
+        stiffness: 190,
+        mass: 0.8,
+        useNativeDriver: true,
+      }),
+      Animated.timing(indicatorOpacity, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [state.index, tabWidth, indicatorX, indicatorOpacity]);
 
-  function handlePressIn(index: number) {
+  const handleLayout = (event: LayoutChangeEvent) => {
+    const width = event.nativeEvent.layout.width;
+
+    if (width !== barWidth) {
+      setBarWidth(width);
+    }
+  };
+
+  const animateScale = (index: number, toValue: number) => {
     Animated.spring(scales[index], {
-      toValue: 0.85,
+      toValue,
+      damping: 13,
+      stiffness: 260,
       useNativeDriver: true,
-      speed: 24,
     }).start();
-  }
-
-  function handlePressOut(index: number) {
-    Animated.spring(scales[index], {
-      toValue: 1,
-      useNativeDriver: true,
-      speed: 24,
-    }).start();
-  }
+  };
 
   return (
     <View
+      pointerEvents="box-none"
       style={[
         styles.wrapper,
-        { paddingBottom: Math.max(insets.bottom, spacing.sm) },
+        {
+          paddingBottom: Math.max(insets.bottom, 12),
+        },
       ]}
     >
       <View style={styles.bar} onLayout={handleLayout}>
-        {barWidth > 0 && (
+        {tabWidth > 0 && (
           <Animated.View
             pointerEvents="none"
             style={[
               styles.indicator,
               {
-                width: tabWidth - spacing.sm * 2,
-                transform: [{ translateX: Animated.add(indicatorX, spacing.sm) }],
+                width: tabWidth,
+                opacity: indicatorOpacity,
+                transform: [{ translateX: indicatorX }],
               },
             ]}
           />
@@ -79,46 +102,76 @@ export default function CustomTabBar({
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
           const isFocused = state.index === index;
-          const label = (options.title ?? route.name) as string;
 
-          function onPress() {
+          const label =
+            typeof options.tabBarLabel === 'string'
+              ? options.tabBarLabel
+              : options.title ?? route.name;
+
+          const onPress = () => {
             const event = navigation.emit({
               type: 'tabPress',
               target: route.key,
               canPreventDefault: true,
             });
+
             if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
+              navigation.navigate(route.name, route.params);
             }
-          }
+          };
+
+          const onLongPress = () => {
+            navigation.emit({
+              type: 'tabLongPress',
+              target: route.key,
+            });
+          };
 
           return (
-            <TouchableOpacity
+            <Pressable
               key={route.key}
-              accessibilityRole="button"
-              accessibilityState={isFocused ? { selected: true } : {}}
-              accessibilityLabel={label}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isFocused }}
+              accessibilityLabel={
+                options.tabBarAccessibilityLabel ?? label
+              }
               onPress={onPress}
-              onPressIn={() => handlePressIn(index)}
-              onPressOut={() => handlePressOut(index)}
-              activeOpacity={0.9}
+              onLongPress={onLongPress}
+              onPressIn={() => animateScale(index, 0.9)}
+              onPressOut={() => animateScale(index, 1)}
               style={styles.tab}
             >
               <Animated.View
-                style={[styles.tabInner, { transform: [{ scale: scales[index] }] }]}
+                style={[
+                  styles.tabContent,
+                  {
+                    transform: [
+                      { scale: scales[index] },
+                    ],
+                  },
+                ]}
               >
-                {options.tabBarIcon?.({
-                  color: isFocused ? colors.primary : colors.textMuted,
-                  size: 22,
-                  focused: isFocused,
-                })}
-                {isFocused && (
-                  <Animated.Text style={styles.label} numberOfLines={1}>
-                    {label}
-                  </Animated.Text>
-                )}
+                <View style={styles.iconContainer}>
+                  {options.tabBarIcon?.({
+                    focused: isFocused,
+                    color: isFocused
+                      ? colors.primary
+                      : colors.textMuted,
+                    size: 23,
+                  })}
+                </View>
+
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    styles.label,
+                    isFocused && styles.activeLabel,
+                  ]}
+                >
+                  {label}
+                </Text>
               </Animated.View>
-            </TouchableOpacity>
+            </Pressable>
           );
         })}
       </View>
@@ -132,47 +185,77 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    paddingHorizontal: HORIZONTAL_MARGIN,
     backgroundColor: 'transparent',
-    paddingHorizontal: spacing.lg,
   },
+
   bar: {
+    height: BAR_HEIGHT,
     flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: BAR_PADDING,
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    height: 64,
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: colors.border,
+
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.09,
+        shadowRadius: 20,
+        shadowOffset: {
+          width: 0,
+          height: 8,
+        },
       },
-      android: { elevation: 6 },
-      web: { boxShadow: '0 6px 16px rgba(0,0,0,0.08)' },
+      android: {
+        elevation: 8,
+      },
+      web: {
+        boxShadow: '0 8px 24px rgba(0,0,0,0.09)',
+      },
     }),
   },
+
   indicator: {
     position: 'absolute',
-    top: spacing.xs,
-    bottom: spacing.xs,
-    backgroundColor: 'rgba(17, 17, 17, 0.06)',
-    borderRadius: radius.md,
+    left: BAR_PADDING,
+    top: BAR_PADDING,
+    bottom: BAR_PADDING,
+    borderRadius: 19,
+    backgroundColor: 'rgba(99, 102, 241, 0.10)',
   },
+
   tab: {
     flex: 1,
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+
+  tabContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+
+  iconContainer: {
+    height: 25,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tabInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
+
   label: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '500',
+    color: colors.textMuted,
+    letterSpacing: 0.1,
+  },
+
+  activeLabel: {
+    fontWeight: '700',
     color: colors.primary,
   },
 });

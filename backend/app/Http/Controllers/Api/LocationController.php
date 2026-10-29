@@ -44,7 +44,7 @@ class LocationController extends Controller
     {
         $validated = $request->validate([
             'name' => [
-                'required',
+                'nullable',
                 'string',
                 'max:255',
                 'unique:locations,name',
@@ -53,6 +53,19 @@ class LocationController extends Controller
                 'nullable',
                 'string',
             ],
+            'latitude' => [
+                'nullable',
+                'numeric',
+                'between:-90,90',
+                'required_with:longitude',
+            ],
+            'longitude' => [
+                'nullable',
+                'numeric',
+                'between:-180,180',
+                'required_with:latitude',
+            ],
+            'address' => ['nullable', 'string', 'max:255'],
         ]);
 
         $location = Location::create($validated);

@@ -13,6 +13,14 @@ class Location extends Model
     protected $fillable = [
         'name',
         'description',
+        'address',
+        'latitude',
+        'longitude',
+    ];
+
+    protected $casts = [
+        'latitude' => 'decimal:7',
+        'longitude' => 'decimal:7',
     ];
 
     public function items(): HasMany

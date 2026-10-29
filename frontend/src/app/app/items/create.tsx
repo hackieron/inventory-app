@@ -1,265 +1,37 @@
-import { useState } from 'react';
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import Toast from 'react-native-toast-message';
-import { colors, radius, spacing } from '@/constants/theme';
-import { createItem } from '@/api/items';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors } from '@/constants/theme';
+import CreateItemForm from '@/features/items/components/CreateItemForm';
+import ItemPreview from '@/features/items/components/ItemPreview';
+import ItemImagePicker from '@/features/items/components/ItemImagePicker';
+import { useCreateItem } from '@/features/items/hooks/useCreateItem';
+import { itemStyles as s } from '@/features/items/styles/createItemStyles';
 
 export default function CreateItemScreen() {
-  const [name, setName] = useState('');
-  const [serialNumber, setSerialNumber] = useState('');
-  const [purchaseDate, setPurchaseDate] = useState('');
-  const [description, setDescription] = useState('');
-  const [notes, setNotes] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async () => {
-    if (!name.trim()) {
-      Alert.alert('Required', 'Please enter an item name.');
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      await createItem({
-        name: name.trim(),
-        serial_number: serialNumber.trim() || null,
-        purchase_date: purchaseDate.trim() || null,
-        description: description.trim() || null,
-        notes: notes.trim() || null,
-      });
-
-      Toast.show({
-        type: 'success',
-        text1: 'Item created',
-        text2: 'Item created successfully.',
-      });
-
-      router.back();
-    } catch (error: any) {
-      console.error('Create item error:', error);
-
-      const message =
-        error.response?.data?.message ||
-        'Unable to create item. Please try again.';
-
-      Alert.alert('Error', message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-      >
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => {
-            if (router.canGoBack()) {
-              router.back();
-            } else {
-              router.replace('/app/tabs/items');
-            }
-          }}
-        >
-          <Text style={styles.backText}>‹</Text>
-          <Text style={styles.backLabel}>Back</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.title}>Add Item</Text>
-
-        <Text style={styles.subtitle}>
-          Add something to your inventory.
-        </Text>
-
-        <View style={styles.form}>
-          <View style={styles.field}>
-            <Text style={styles.label}>Item name *</Text>
-
-            <TextInput
-              style={styles.input}
-              value={name}
-              onChangeText={setName}
-              placeholder="e.g. Gaming Laptop"
-              placeholderTextColor={colors.placeholder}
-            />
-          </View>
-
-          <View style={styles.field}>
-            <Text style={styles.label}>Serial number</Text>
-
-            <TextInput
-              style={styles.input}
-              value={serialNumber}
-              onChangeText={setSerialNumber}
-              placeholder="e.g. LAPTOP-001"
-              placeholderTextColor={colors.placeholder}
-              autoCapitalize="characters"
-            />
-          </View>
-
-          <View style={styles.field}>
-            <Text style={styles.label}>Purchase date</Text>
-
-            <TextInput
-              style={styles.input}
-              value={purchaseDate}
-              onChangeText={setPurchaseDate}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.placeholder}
-            />
-          </View>
-
-          <View style={styles.field}>
-            <Text style={styles.label}>Description</Text>
-
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={description}
-              onChangeText={setDescription}
-              placeholder="Describe the item..."
-              placeholderTextColor={colors.placeholder}
-              multiline
-              textAlignVertical="top"
-            />
-          </View>
-
-          <View style={styles.field}>
-            <Text style={styles.label}>Notes</Text>
-
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={notes}
-              onChangeText={setNotes}
-              placeholder="Additional notes..."
-              placeholderTextColor={colors.placeholder}
-              multiline
-              textAlignVertical="top"
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[
-              styles.submitButton,
-              loading && styles.submitButtonDisabled,
-            ]}
-            onPress={handleSubmit}
-            disabled={loading}
-          >
-            <Text style={styles.submitText}>
-              {loading ? 'Adding...' : 'Add Item'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
+  const insets = useSafeAreaInsets();
+  const { values, setField, loading, submit } = useCreateItem();
+  const goBack = () => router.canGoBack() ? router.back() : router.replace('/app/tabs/items');
+  const handleSave = async () => { if (await submit()) goBack(); };
+  return <KeyboardAvoidingView style={s.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <View style={[s.header, { paddingTop: Math.max(insets.top, 12) }]}>
+      <Pressable onPress={goBack} accessibilityLabel="Go back" style={s.back}><Ionicons name="arrow-back" size={21} color={colors.text} /></Pressable>
+      <Text style={s.headerTitle}>New Item</Text><View style={{ width: 42 }} />
+    </View>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={s.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <View><Text style={s.eyebrow}>INVENTORY MANAGEMENT</Text><Text style={s.title}>Add to your collection</Text>
+        <Text style={s.subtitle}>Keep track of your belongings and organize everything in one place.</Text></View>
+      <ItemPreview name={values.name} serialNumber={values.serialNumber} imageUri={values.image?.uri} />
+      <ItemImagePicker value={values.image} onChange={(image) => setField('image', image)} />
+      <CreateItemForm values={values} setField={setField} />
+      <View style={s.infoBanner}><Ionicons name="shield-checkmark-outline" size={21} color={colors.primary} />
+        <Text style={s.infoText}>Your item will be saved to your personal inventory. You can update its details later.</Text></View>
+    </ScrollView>
+    <View style={[s.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Add to inventory" disabled={loading} onPress={handleSave} style={[s.save, loading && { opacity: 0.6 }]}>
+        {loading ? <ActivityIndicator color="#fff" /> : <><Ionicons name="add-circle-outline" size={21} color="#fff" /><Text style={s.saveText}>Add to Inventory</Text><Ionicons name="arrow-forward" size={18} color="#fff" /></>}
+      </Pressable>
+    </View>
+  </KeyboardAvoidingView>;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.bg,
-  },
-
-  content: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xl,
-  },
-
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-
-  backText: {
-    fontSize: 30,
-    color: colors.text,
-    marginRight: 4,
-  },
-
-  backLabel: {
-    fontSize: 15,
-    color: colors.textMuted,
-  },
-
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-
-  subtitle: {
-    fontSize: 14,
-    color: colors.textMuted,
-    marginBottom: spacing.xl,
-  },
-
-  form: {
-    gap: spacing.md,
-  },
-
-  field: {
-    gap: spacing.xs,
-  },
-
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-  },
-
-  input: {
-    minHeight: 48,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
-    fontSize: 15,
-    color: colors.text,
-  },
-
-  textArea: {
-    minHeight: 110,
-    paddingTop: spacing.md,
-  },
-
-  submitButton: {
-    minHeight: 50,
-    borderRadius: radius.md,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.md,
-  },
-
-  submitButtonDisabled: {
-    opacity: 0.5,
-  },
-
-  submitText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-});
