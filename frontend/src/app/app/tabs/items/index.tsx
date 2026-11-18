@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Platform,
   RefreshControl,
   StyleSheet,
   Text,
@@ -16,7 +17,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing } from '@/constants/theme';
 import { getItems } from '@/api/items';
+import { getToken } from '@/utils/auth';
 import type { Item } from '@/types/item';
+import { resolveMediaUrl } from '@/utils/media';
 
 type ViewMode = 'list' | 'grid';
 
@@ -30,6 +33,7 @@ export default function ItemsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [imageToken, setImageToken] = useState<string | null | undefined>(undefined);
 
   const loadItems = useCallback(async () => {
     try {
@@ -44,6 +48,16 @@ export default function ItemsScreen() {
   }, []);
 
   useFocusEffect(useCallback(() => { void loadItems(); }, [loadItems]));
+
+  useFocusEffect(useCallback(() => {
+    void getToken().then((token) => {
+      console.log('[Item images] token loaded:', {
+        available: Boolean(token),
+        prefix: token?.slice(0, 8) || null,
+      });
+      setImageToken(token);
+    });
+  }, []));
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -126,7 +140,7 @@ export default function ItemsScreen() {
         ]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
         renderItem={({ item }) => item
-          ? <ItemCard item={item} width={cardWidth} isGrid={isGrid} />
+          ? <ItemCard item={item} width={cardWidth} isGrid={isGrid} imageToken={imageToken} />
           : <View style={{ width: cardWidth }} />
         }
         ListEmptyComponent={
@@ -147,10 +161,30 @@ export default function ItemsScreen() {
   );
 }
 
-function ItemCard({ item, width, isGrid }: { item: Item; width: number; isGrid: boolean }) {
+function ItemCard({
+  item,
+  width,
+  isGrid,
+  imageToken,
+}: {
+  item: Item;
+  width: number;
+  isGrid: boolean;
+  imageToken: string | null | undefined;
+}) {
   const borrowed = item.status === 'borrowed';
   const initial = (item.name.trim()[0] || '?').toUpperCase();
   const borrower = borrowed ? item.current_borrowing?.contact?.name : undefined;
+  const imageUrl = resolveMediaUrl(item.image_url);
+
+  if (imageUrl && imageToken !== undefined) {
+    console.log('[Item images] preparing image:', {
+      itemId: item.id,
+      url: imageUrl,
+      hasToken: Boolean(imageToken),
+      tokenPrefix: imageToken?.slice(0, 8) || null,
+    });
+  }
 
   return (
     <TouchableOpacity
@@ -158,10 +192,44 @@ function ItemCard({ item, width, isGrid }: { item: Item; width: number; isGrid: 
       accessibilityRole="button"
       accessibilityLabel={`View ${item.name}`}
       onPress={() => router.push({ pathname: '/app/items/[id]', params: { id: String(item.id) } })}
-      style={[styles.card, { width, height: isGrid ? width * 1.5 : Math.min(width * 0.95, 410) }]}
+      style={[styles.card, { width, height: isGrid ? width * 1.38 : 190 }]}
     >
-      {item.image ? (
-        <Image source={{ uri: item.image }} style={StyleSheet.absoluteFill} contentFit="cover" />
+      {imageUrl && imageToken !== undefined ? (
+        <Image
+          source={{
+            uri: imageUrl,
+            headers: imageToken ? { Authorization: `Bearer ${imageToken}` } : undefined,
+          }}
+          onLoad={() => console.log('[Item images] loaded:', { itemId: item.id })}
+          onError={(event) => {
+            console.log('[Item images] failed:', {
+              itemId: item.id,
+              error: event.error,
+              hasToken: Boolean(imageToken),
+              url: imageUrl,
+            });
+
+            if (imageToken) {
+              void fetch(imageUrl, {
+                headers: { Authorization: `Bearer ${imageToken}` },
+              })
+                .then((response) => console.log('[Item images] server check:', {
+                  itemId: item.id,
+                  status: response.status,
+                  contentType: response.headers.get('content-type'),
+                }))
+                .catch((checkError) => console.log('[Item images] server check failed:', {
+                  itemId: item.id,
+                  error: String(checkError),
+                }));
+            }
+          }}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          transition={180}
+          cachePolicy="memory-disk"
+          placeholder={colors.surface}
+        />
       ) : (
         <View style={[StyleSheet.absoluteFill, styles.placeholder]}>
           <Text style={styles.placeholderInitial}>{initial}</Text>
@@ -170,8 +238,8 @@ function ItemCard({ item, width, isGrid }: { item: Item; width: number; isGrid: 
       )}
 
       <LinearGradient
-        colors={['rgba(0,0,0,0.10)', 'rgba(0,0,0,0.04)', borrowed ? 'rgba(116,67,9,0.76)' : 'rgba(4,77,88,0.85)', borrowed ? '#a86b1d' : '#006d7a']}
-        locations={[0, 0.37, 0.73, 1]}
+        colors={['rgba(0,0,0,0.06)', 'rgba(0,0,0,0.02)', borrowed ? 'rgba(91,54,14,0.72)' : 'rgba(15,53,61,0.76)', borrowed ? '#8f5b1e' : '#145b66']}
+        locations={[0, 0.34, 0.7, 1]}
         style={StyleSheet.absoluteFill}
       />
 
@@ -183,7 +251,7 @@ function ItemCard({ item, width, isGrid }: { item: Item; width: number; isGrid: 
           </View>
         </View>
         <View style={styles.cardBottom}>
-          <Text style={[styles.cardTitle, isGrid && styles.cardTitleGrid]} numberOfLines={2}>
+          <Text style={[styles.cardTitle, isGrid && styles.cardTitleGrid]} numberOfLines={isGrid ? 2 : 1}>
             {item.name}
           </Text>
           <View style={styles.cardDivider} />
@@ -222,11 +290,23 @@ const styles = StyleSheet.create({
   viewToggleButtonActive: { backgroundColor: colors.primary },
   list: { flexGrow: 1, paddingHorizontal: SIDE_PADDING },
   gridRow: { gap: CARD_GAP, marginBottom: CARD_GAP },
-  card: { borderRadius: 23, overflow: 'hidden', marginBottom: CARD_GAP, backgroundColor: '#234c55' },
+  card: {
+    borderRadius: 22,
+    overflow: 'hidden',
+    marginBottom: CARD_GAP,
+    backgroundColor: '#234c55',
+    borderWidth: 1,
+    borderColor: 'rgba(17,17,17,0.08)',
+    ...Platform.select({
+      ios: { shadowColor: '#111', shadowOpacity: 0.12, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
+      android: { elevation: 4 },
+      web: { boxShadow: '0 8px 22px rgba(17,17,17,0.12)' },
+    }),
+  },
   placeholder: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#73929b' },
   placeholderInitial: { color: 'rgba(255,255,255,0.48)', fontSize: 72, fontWeight: '800' },
   placeholderIcon: { position: 'absolute', right: 18, top: 18 },
-  cardContent: { flex: 1, justifyContent: 'space-between', padding: 14 },
+  cardContent: { flex: 1, justifyContent: 'space-between', padding: 13 },
   cardTop: { alignItems: 'flex-start' },
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 6, paddingHorizontal: 9, borderRadius: 999, backgroundColor: 'rgba(0,55,60,0.67)' },
   borrowedBadge: { backgroundColor: 'rgba(105,64,14,0.78)' },
@@ -234,9 +314,9 @@ const styles = StyleSheet.create({
   borrowedDot: { backgroundColor: '#ffd083' },
   statusText: { fontSize: 10, color: '#FFFFFF', fontWeight: '700' },
   cardBottom: { gap: 9 },
-  cardTitle: { fontSize: 23, fontWeight: '800', lineHeight: 28, letterSpacing: -0.5, color: '#FFFFFF' },
-  cardTitleGrid: { fontSize: 17, lineHeight: 21, letterSpacing: -0.3 },
-  cardDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.32)' },
+  cardTitle: { fontSize: 21, fontWeight: '800', lineHeight: 25, letterSpacing: -0.5, color: '#FFFFFF' },
+  cardTitleGrid: { fontSize: 16, lineHeight: 19, letterSpacing: -0.25 },
+  cardDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.24)' },
   cardDetails: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 5 },
   cardDetailText: { flex: 1, minWidth: 0, gap: 4 },
   categoryText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },

@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Item;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use OpenApi\Attributes as OA;
 
 class ItemController extends Controller
@@ -45,7 +47,22 @@ class ItemController extends Controller
     }
     public function discover(Request $request): JsonResponse
     {
+        $contactUserIds = $request->user()
+            ->contacts()
+            ->whereNotNull('contact_user_id')
+            ->whereHas('contactUser.contacts', function ($query) use ($request) {
+                $query->where('contact_user_id', $request->user()->id);
+            })
+            ->pluck('contact_user_id');
+
         $items = Item::query()
+            ->where('user_id', '!=', $request->user()->id)
+            ->whereIn('user_id', $contactUserIds)
+            ->whereDoesntHave('borrowingRequests', function ($query) use ($request) {
+                $query
+                    ->where('requester_id', $request->user()->id)
+                    ->where('status', 'pending');
+            })
             ->where('is_borrowable', true)
             ->where('status', 'stored')
             ->with([
@@ -133,6 +150,13 @@ class ItemController extends Controller
                 'integer'
         ]);
 
+        // Keep item images on the private local disk. The database stores only
+        // the generated path, never a client-supplied filename.
+        unset($validated['image']);
+        if ($request->hasFile('image')) {
+            $validated['image'] = $request->file('image')->store('items', 'local');
+        }
+
         /*
          * New items always start as "stored".
          * Borrowing will handle the borrowed status later.
@@ -152,6 +176,52 @@ class ItemController extends Controller
             'message' => 'Item created successfully.',
             'data' => $item,
         ], 201);
+    }
+
+    /**
+     * Stream an item image only to an authorized authenticated user.
+     */
+    public function image(Request $request, int $item)
+    {
+        $item = Item::query()->findOrFail($item);
+        $isOwner = $item->user_id === $request->user()->id;
+        $isBorrowablePreview = $item->is_borrowable && $item->status === 'stored';
+        $hasAccess = $isOwner || $isBorrowablePreview;
+        $hasStoredFile = (bool) $item->image
+            && Storage::disk('local')->exists($item->image);
+
+        Log::info('Item image request', [
+            'item_id' => $item->id,
+            'item_owner_id' => $item->user_id,
+            'authenticated_user_id' => $request->user()->id,
+            'image_path' => $item->image,
+            'stored_file_exists' => $hasStoredFile,
+            'is_owner' => $isOwner,
+            'is_borrowable_preview' => $isBorrowablePreview,
+            'has_access' => $hasAccess,
+        ]);
+
+        if (!$hasAccess) {
+            Log::warning('Item image access denied', [
+                'item_id' => $item->id,
+                'item_owner_id' => $item->user_id,
+                'authenticated_user_id' => $request->user()->id,
+            ]);
+
+            abort(403);
+        }
+
+        if (!$hasStoredFile) {
+            Log::warning('Item image file missing', [
+                'item_id' => $item->id,
+                'image_path' => $item->image,
+                'storage_root' => config('filesystems.disks.local.root'),
+            ]);
+
+            abort(404);
+        }
+
+        return Storage::disk('local')->response($item->image);
     }
 
     #[OA\Get(
@@ -228,7 +298,8 @@ class ItemController extends Controller
             ->items()
             ->findOrFail($item);
 
-        // Get the current location before updating
+        $original = $item->getRawOriginal();
+        $oldCategory = $item->category?->name;
         $oldLocation = $item->location?->name;
 
         $validated = $request->validate([
@@ -264,8 +335,9 @@ class ItemController extends Controller
 
             'image' => [
                 'nullable',
-                'string',
-                'max:255',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
             ],
 
             'description' => [
@@ -279,38 +351,75 @@ class ItemController extends Controller
             ],
         ]);
 
+        unset($validated['image']);
+        if ($request->hasFile('image')) {
+            $newImage = $request->file('image')->store('items', 'local');
+
+            if ($item->image) {
+                Storage::disk('local')->delete($item->image);
+            }
+
+            $validated['image'] = $newImage;
+        }
+
         // Update the item
         $item->update($validated);
 
-        // Reload the new location
+        // Reload related display values after the update.
         $item->load([
             'category',
             'location',
         ]);
 
-        // Get the new location
+        $newCategory = $item->category?->name;
         $newLocation = $item->location?->name;
 
-        // Create history only if the location changed
-        if ($oldLocation !== $newLocation) {
+        $labels = [
+            'name' => 'Name',
+            'serial_number' => 'Serial number',
+            'purchase_date' => 'Purchase date',
+            'description' => 'Description',
+            'notes' => 'Notes',
+            'category_id' => 'Category',
+            'location_id' => 'Location',
+        ];
+        $changes = [];
+        $formatValue = static fn ($value): string =>
+            $value === null || $value === '' ? 'empty' : (string) $value;
 
-            $description = match (true) {
-                $oldLocation && $newLocation =>
-                    "Item moved from {$oldLocation} to {$newLocation}.",
+        foreach ($item->getChanges() as $field => $newValue) {
+            if ($field === 'updated_at') {
+                continue;
+            }
 
-                $oldLocation && !$newLocation =>
-                    "Item removed from {$oldLocation}.",
+            if ($field === 'image') {
+                $changes[] = 'Photo updated.';
+                continue;
+            }
 
-                !$oldLocation && $newLocation =>
-                    "Item assigned to {$newLocation}.",
+            if (!array_key_exists($field, $labels)) {
+                continue;
+            }
 
-                default =>
-                    "Item location updated.",
+            $oldValue = $original[$field] ?? null;
+            $displayOld = match ($field) {
+                'category_id' => $oldCategory ?? 'empty',
+                'location_id' => $oldLocation ?? 'empty',
+                default => $formatValue($oldValue),
+            };
+            $displayNew = match ($field) {
+                'category_id' => $newCategory ?? 'empty',
+                'location_id' => $newLocation ?? 'empty',
+                default => $formatValue($newValue),
             };
 
+            $changes[] = "{$labels[$field]}: {$displayOld} -> {$displayNew}";
+        }
+
+        if ($changes !== []) {
             $item->histories()->create([
-                'action' => 'moved',
-                'description' => $description,
+                'action' => 'updated',
+                'description' => implode("\n", $changes),
                 'old_location' => $oldLocation,
                 'new_location' => $newLocation,
             ]);

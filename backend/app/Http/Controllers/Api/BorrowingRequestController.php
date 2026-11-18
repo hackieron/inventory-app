@@ -117,6 +117,20 @@ class BorrowingRequestController extends Controller
             ], 403);
         }
 
+        $isContact = $request->user()
+            ->contacts()
+            ->where('contact_user_id', $item->user_id)
+            ->whereHas('contactUser.contacts', function ($query) use ($request) {
+                $query->where('contact_user_id', $request->user()->id);
+            })
+            ->exists();
+
+        if (!$isContact) {
+            return response()->json([
+                'message' => 'You can only request items from your contacts.',
+            ], 403);
+        }
+
         // Item must be publicly borrowable.
         if (!$item->is_borrowable) {
             return response()->json([

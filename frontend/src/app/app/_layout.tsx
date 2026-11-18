@@ -6,6 +6,14 @@ export default function AppLayout() {
       <Stack.Screen name="tabs" />
 
       <Stack.Screen
+        name="contacts/index"
+        options={{
+          presentation: 'modal',
+          headerShown: false,
+        }}
+      />
+
+      <Stack.Screen
         name="items/create"
         options={{
           presentation: 'modal',

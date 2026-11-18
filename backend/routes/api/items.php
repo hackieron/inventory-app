@@ -10,6 +10,10 @@ Route::middleware('auth:sanctum')->group(function () {
         ItemController::class, 'discover'
     ]);
 
+    Route::get('/items/{item}/image', [
+        ItemController::class, 'image'
+    ])->name('items.image');
+
     Route::apiResource('items', ItemController::class);
 
     Route::post('/items/{id}/make-borrowable', [

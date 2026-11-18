@@ -15,6 +15,10 @@ import { itemStyles as s } from '../styles/createItemStyles';
 interface DatePickerFieldProps {
   value: string;
   onChange: (date: string) => void;
+  label?: string;
+  emptyLabel?: string;
+  minimumDate?: Date;
+  maximumDate?: Date | null;
 }
 
 function formatDate(date: Date): string {
@@ -28,6 +32,10 @@ function formatDate(date: Date): string {
 export default function DatePickerField({
   value,
   onChange,
+  label = 'Purchase date',
+  emptyLabel = 'Select purchase date',
+  minimumDate,
+  maximumDate = new Date(),
 }: DatePickerFieldProps) {
   const [showPicker, setShowPicker] = useState(false);
 
@@ -41,7 +49,7 @@ export default function DatePickerField({
         day: 'numeric',
         year: 'numeric',
       })
-    : 'Select purchase date';
+    : emptyLabel;
 
   const handleValueChange = (
     event: any,
@@ -59,7 +67,7 @@ export default function DatePickerField({
   return (
     <View style={s.field}>
       <View style={s.fieldHeader}>
-        <Text style={s.fieldLabel}>Purchase date</Text>
+        <Text style={s.fieldLabel}>{label}</Text>
         <Text style={s.optional}>Optional</Text>
       </View>
 
@@ -113,7 +121,8 @@ export default function DatePickerField({
           value={selectedDate}
           mode="date"
           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          maximumDate={new Date()}
+          minimumDate={minimumDate}
+          maximumDate={maximumDate ?? undefined}
           onValueChange={handleValueChange}
           onDismiss={() => setShowPicker(false)}
         />

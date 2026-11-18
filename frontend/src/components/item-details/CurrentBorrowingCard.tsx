@@ -26,9 +26,11 @@ export function CurrentBorrowingCard({ borrowing, onReturn }: Props) {
         />
       )}
 
-      <TouchableOpacity style={styles.returnButton} onPress={onReturn}>
-        <Text style={styles.returnButtonText}>Return Item</Text>
-      </TouchableOpacity>
+      {onReturn && (
+        <TouchableOpacity style={styles.returnButton} onPress={onReturn}>
+          <Text style={styles.returnButtonText}>Return Item</Text>
+        </TouchableOpacity>
+      )}
     </Card>
   );
 }

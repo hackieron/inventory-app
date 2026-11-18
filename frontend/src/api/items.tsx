@@ -30,6 +30,14 @@ export async function updateItem(
   return response.data.data;
 }
 
+export async function updateItemWithImage(id: number, form: FormData): Promise<Item> {
+  form.append('_method', 'PUT');
+  const response = await api.post(`/items/${id}`, form, {
+    headers: { 'Content-Type': undefined },
+  });
+  return response.data.data;
+}
+
 export async function deleteItem(id: number): Promise<void> {
   await api.delete(`/items/${id}`);
 }

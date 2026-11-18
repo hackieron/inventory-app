@@ -29,6 +29,7 @@ export interface Borrowing {
 
 export interface Item {
   id: number;
+  user_id?: number;
 
   category_id: number | null;
   location_id: number | null;
@@ -38,6 +39,7 @@ export interface Item {
   status: string;
   purchase_date: string | null;
   image: string | null;
+  image_url?: string | null;
   description: string | null;
   notes: string | null;
   is_borrowable: boolean;
@@ -49,6 +51,10 @@ export interface Item {
   location?: {
     id: number;
     name: string;
+    address?: string | null;
+    description?: string | null;
+    latitude?: number | string | null;
+    longitude?: number | string | null;
   } | null;
 
   current_borrowing?: Borrowing | null;

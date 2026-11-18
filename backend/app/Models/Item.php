@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Storage;
 class Item extends Model
 {
     use HasFactory;
@@ -33,7 +32,7 @@ class Item extends Model
     public function getImageUrlAttribute(): ?string
     {
         return $this->image
-            ? Storage::disk('public')->url($this->image)
+            ? route('items.image', ['item' => $this->getKey()])
             : null;
     }
     public function category(): BelongsTo
@@ -49,6 +48,11 @@ class Item extends Model
     public function borrowings(): HasMany
     {
         return $this->hasMany(Borrowing::class);
+    }
+
+    public function borrowingRequests(): HasMany
+    {
+        return $this->hasMany(BorrowingRequest::class);
     }
 
     public function histories(): HasMany
