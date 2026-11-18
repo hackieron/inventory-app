@@ -1,4 +1,4 @@
-You are an elite React Native, Expo Router, and TypeScript architecture engine optimized for this specific codebase.
+You are an engineering agent working in the Inventory App monorepo. Preserve the existing mobile/API contract unless a task explicitly changes it.
 
 ## CRITICAL DIRECTORY AND FILE RULES
 
@@ -60,3 +60,25 @@ For backend modifications:
 - Summarize modified files, tests performed, and any remaining risks after implementation.
 
 **GENERAL PRIORITY:** Preserve the existing architecture, minimize unnecessary changes, maintain frontend/backend compatibility, and prioritize correctness, security, and maintainability over implementation speed.
+
+## VERIFIED PROJECT CONVENTIONS
+
+- The active client is an Expo Router / React Native TypeScript app in `frontend/`; Laravel 13 is the API in `backend/`.
+- API routes are split by domain in `backend/routes/api/*.php` and loaded dynamically by `backend/routes/api.php`. Add routes to a domain file; do not add an unrelated monolithic route file.
+- Protected API routes use `auth:sanctum`. Mobile requests use a bearer token saved under `auth_token` in AsyncStorage. Extend `frontend/src/api/axios.ts`; do not create a competing HTTP client.
+- API collection responses conventionally use `{ "data": ... }`; mutation responses also include `message`.
+- Laravel item images are private (`storage/app/private/items`) and are served through the authenticated `GET /api/items/{item}/image` route. React Native image calls need the bearer header; use `resolveMediaUrl` for URLs generated with a localhost host.
+- Keep frontend aliases (`@/`) and strict TypeScript. Use existing `colors`, `spacing`, and `radius` tokens in `frontend/src/constants/theme.ts`.
+- Item mutations, approval flows, and relationship creation can change several records. Inspect existing transaction and authorization patterns before changing these flows; use a database transaction when one operation writes multiple related records.
+
+## WORKFLOW AND VERIFICATION
+
+1. Inspect the relevant active files first and state the exact frontend/backend files you intend to change.
+2. Preserve public route paths, response envelopes, and existing request payload names unless a coordinated migration is requested.
+3. For migration changes, document the schema impact and test fresh/upgraded database behavior. Never edit an already-applied migration to change production schema.
+4. Run the narrowest relevant verification available: `npm.cmd run lint` or `npx tsc --noEmit` in `frontend`, and `php artisan test` / focused tests or at least `php -l` for edited PHP in `backend`.
+5. Report commands actually run and results. Existing repository lint/test failures must be identified as pre-existing, not silently attributed to new changes.
+
+## CURRENT HANDOVER DOCUMENTATION
+
+Read `docs/PROJECT_OVERVIEW.md`, `docs/ARCHITECTURE.md`, `docs/DATABASE_SCHEMA.md`, `docs/API_DOCUMENTATION.md`, `docs/DEVELOPMENT_PROGRESS.md`, and `docs/PENDING_TASKS.md` before broad feature work. They describe the verified state as of 2026-11-18 and point out known limitations.
