@@ -39,6 +39,7 @@ class BorrowingRequestController extends Controller
             })
             ->with([
                 'item',
+                'item.user:id,name,email,avatar',
                 'requester',
             ])
             ->latest()
@@ -69,6 +70,7 @@ class BorrowingRequestController extends Controller
         $requests = BorrowingRequest::query()
             ->where('requester_id', $request->user()->id)
             ->with([
+                'item.user:id,name,email,avatar',
                 'item.category',
                 'item.location',
             ])

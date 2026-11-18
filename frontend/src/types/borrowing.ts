@@ -16,6 +16,7 @@ export interface BorrowingRequest {
     notes?: string | null;
     category?: { name: string } | null;
     location?: { name: string } | null;
+    user?: { id: number; name: string; email?: string | null; avatar?: string | null } | null;
   } | null;
   requester?: { id: number; name: string; email?: string | null } | null;
   created_at: string;

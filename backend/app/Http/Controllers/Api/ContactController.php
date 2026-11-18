@@ -30,6 +30,8 @@ class ContactController extends Controller
     {
         $contacts = $request->user()
             ->contacts()
+            ->whereNotNull('contact_user_id')
+            ->where('contact_user_id', '!=', $request->user()->id)
             ->with('contactUser')
             ->withCount('borrowings')
             ->latest()

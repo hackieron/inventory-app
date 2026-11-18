@@ -20,7 +20,19 @@ export default function BorrowingRequestCard({ request, mode, busy, onAction }: 
       <View style={styles.heroCopy}><Text style={styles.name} numberOfLines={2}>{title}</Text>{!!item?.category && <Text style={styles.category}>{item.category.name}</Text>}</View>
     </View>
     <View style={styles.body}>
-      <View style={styles.infoGrid}><Info icon="calendar-outline" label="Expected return" value={returnDate} /><Info icon={mode === 'incoming' ? 'person-outline' : 'location-outline'} label={mode === 'incoming' ? 'Requested by' : 'Location'} value={mode === 'incoming' ? (request.requester?.name || 'Unknown user') : (item?.location?.name || 'Not specified')} /></View>
+      <View style={styles.infoGrid}>
+        {mode === 'incoming' ? (
+          <Info icon="person-outline" label="Borrower" value={request.requester?.name || 'Unknown user'} />
+        ) : (
+          <Info icon="person-outline" label="Owner" value={item?.user?.name || 'Unknown owner'} />
+        )}
+        <Info icon="calendar-outline" label="Expected return" value={returnDate} />
+      </View>
+      {mode !== 'incoming' && (
+        <View style={styles.infoGrid}>
+          <Info icon="location-outline" label="Location" value={item?.location?.name || 'Not specified'} />
+        </View>
+      )}
       {!!item?.serial_number && <Text style={styles.meta}>Serial number · {item.serial_number}</Text>}
       {!!item?.description && <Text style={styles.description} numberOfLines={2}>{item.description}</Text>}
       {!!request.notes && <View style={styles.note}><Ionicons name="chatbubble-ellipses-outline" size={16} color={colors.textMuted} /><Text style={styles.noteText} numberOfLines={2}>{request.notes}</Text></View>}

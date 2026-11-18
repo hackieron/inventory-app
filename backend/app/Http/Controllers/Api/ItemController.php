@@ -36,6 +36,7 @@ class ItemController extends Controller
             ->with([
                 'category',
                 'location',
+                'user:id,name,email,avatar',
                 'currentBorrowing.contact',
             ])
             ->latest()
@@ -68,6 +69,7 @@ class ItemController extends Controller
             ->with([
                 'category',
                 'location',
+                'user:id,name,email,avatar',
                 'currentBorrowing.contact',
             ])
             ->latest()

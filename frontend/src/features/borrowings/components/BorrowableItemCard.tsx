@@ -16,6 +16,7 @@ export default function BorrowableItemCard({ item, onRequest }: Props) {
     </View>
     <View style={styles.body}>
       <View style={styles.infoGrid}>
+        <Info icon="person-outline" label="Owner" value={item.user?.name || 'Unknown owner'} />
         <Info icon="location-outline" label="Location" value={item.location?.name || 'Not specified'} />
         <Info icon="barcode-outline" label="Serial number" value={item.serial_number || 'Not specified'} />
       </View>

@@ -30,6 +30,7 @@ export interface Borrowing {
 export interface Item {
   id: number;
   user_id?: number;
+  user?: { id: number; name: string; email?: string | null; avatar?: string | null } | null;
 
   category_id: number | null;
   location_id: number | null;

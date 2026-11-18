@@ -13,6 +13,8 @@ import {
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs/types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/constants/theme';
+import { getIncomingBorrowingRequests } from '@/api/borrowings';
+import { getIncomingFriendRequests } from '@/api/contacts';
 
 const BAR_HEIGHT = 68;
 const BAR_PADDING = 6;
@@ -25,6 +27,7 @@ export default function CustomTabBar({
 }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const [barWidth, setBarWidth] = useState(0);
+  const [incomingCounts, setIncomingCounts] = useState({ borrowed: 0, contacts: 0 });
 
   const indicatorX = useRef(new Animated.Value(0)).current;
   const indicatorOpacity = useRef(new Animated.Value(0)).current;
@@ -32,6 +35,52 @@ export default function CustomTabBar({
   const scales = useRef(
     state.routes.map(() => new Animated.Value(1))
   ).current;
+
+  useEffect(() => {
+    let active = true;
+
+    const loadIncomingCounts = async () => {
+      try {
+        const [borrowingResult, friendResult] = await Promise.allSettled([
+          getIncomingBorrowingRequests(),
+          getIncomingFriendRequests(),
+        ]);
+
+        if (active) {
+          const borrowingCount = borrowingResult.status === 'fulfilled'
+            ? borrowingResult.value.filter((request) => String(request.status).toLowerCase() === 'pending').length
+            : 0;
+          const contactsCount = friendResult.status === 'fulfilled'
+            ? friendResult.value.filter((request) => String(request.status).toLowerCase() === 'pending').length
+            : 0;
+
+          console.log('[Tab badges] incoming counts:', {
+            routeNames: state.routes.map((route) => route.name),
+            borrowingStatus: borrowingResult.status === 'fulfilled'
+              ? borrowingResult.value.map((request) => request.status)
+              : 'request failed',
+            borrowed: borrowingCount,
+            contacts: contactsCount,
+          });
+
+          setIncomingCounts({
+            borrowed: borrowingCount,
+            contacts: contactsCount,
+          });
+        }
+      } catch {
+        console.log('[Tab badges] unable to load incoming counts');
+      }
+    };
+
+    void loadIncomingCounts();
+    const retry = setTimeout(loadIncomingCounts, 1000);
+
+    return () => {
+      active = false;
+      clearTimeout(retry);
+    };
+  }, [state.index]);
 
   const tabWidth =
     barWidth > 0
@@ -159,6 +208,13 @@ export default function CustomTabBar({
                       : colors.textMuted,
                     size: 23,
                   })}
+                  {(((route.name === 'borrowed' || route.name === 'borrowed/index') && incomingCounts.borrowed > 0) || (route.name === 'contacts' && incomingCounts.contacts > 0)) && (
+                    <View style={styles.notificationBadge}>
+                      <Text style={styles.notificationText}>
+                        {Math.min(route.name === 'borrowed' || route.name === 'borrowed/index' ? incomingCounts.borrowed : incomingCounts.contacts, 99)}
+                      </Text>
+                    </View>
+                  )}
                 </View>
 
                 <Text
@@ -243,8 +299,31 @@ const styles = StyleSheet.create({
 
   iconContainer: {
     height: 25,
+    position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  notificationBadge: {
+    position: 'absolute',
+    top: -7,
+    right: -13,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 4,
+    borderRadius: 999,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.surface,
+  },
+
+  notificationText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '800',
+    lineHeight: 12,
   },
 
   label: {
