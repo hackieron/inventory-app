@@ -80,3 +80,10 @@ What does John have? → User → Contact → Borrowings → Items
 Where is my item? → Item → Location
 
 Where has my item been? → Item → ItemHistories
+
+
+
+
+cd frontend
+cd android
+.\gradlew.bat assembleRelease -PreactNativeArchitectures=arm64-v8a

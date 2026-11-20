@@ -7,7 +7,7 @@ export interface Contact {
   phone: string | null;
   notes: string | null;
   borrowings_count?: number;
-  contact_user?: { id: number; name: string; email?: string | null } | null;
+  contact_user?: { id: number; name: string; email?: string | null; avatar?: string | null } | null;
   created_at?: string;
 }
 

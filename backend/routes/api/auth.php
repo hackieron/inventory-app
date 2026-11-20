@@ -24,4 +24,10 @@ Route::middleware('auth:sanctum')->group(function () {
         ]);
     });
 
+    Route::get('/profile', [AuthController::class, 'profile']);
+    Route::patch('/profile', [AuthController::class, 'updateProfile']);
+    Route::post('/profile/avatar', [AuthController::class, 'updateAvatar']);
+    Route::get('/profile/avatar', [AuthController::class, 'avatar']);
+    Route::patch('/profile/password', [AuthController::class, 'updatePassword']);
+
 });

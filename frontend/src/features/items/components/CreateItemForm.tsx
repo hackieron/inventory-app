@@ -5,9 +5,10 @@ import DatePickerField from './DatePickerField';
 import LocationMapPicker from './LocationMapPicker';
 import type { CreateItemValues } from '../types';
 
-export default function CreateItemForm({ values, setField }: {
+export default function CreateItemForm({ values, setField, imageUri }: {
   values: CreateItemValues;
   setField: <K extends keyof CreateItemValues>(key: K, value: CreateItemValues[K]) => void;
+  imageUri?: string | null;
 }) {
   return <>
     <FormSection title="Basic details" subtitle="Let's start with the essentials" icon="information-circle-outline">
@@ -16,6 +17,7 @@ export default function CreateItemForm({ values, setField }: {
       <DatePickerField value={values.purchaseDate} onChange={(v) => setField('purchaseDate', v)} />
     </FormSection>
     <LocationMapPicker
+      imageUri={imageUri || values.image?.uri}
       value={values.coordinates}
       address={values.address}
       onChange={(coordinates) =>

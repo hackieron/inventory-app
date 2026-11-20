@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -7,10 +7,13 @@ import {
   Text,
   View,
 } from 'react-native';
-import MapView, { Marker, Region } from 'react-native-maps';
+import { Camera, Map, Marker, type CameraRef, type InitialViewState } from '@maplibre/maplibre-react-native';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/constants/theme';
+import { Image } from 'expo-image';
+import { getToken } from '@/utils/auth';
+import { resolveMediaUrl } from '@/utils/media';
 
 export type MapCoordinates = { latitude: number; longitude: number };
 
@@ -19,18 +22,24 @@ type Props = {
   address: string;
   onChange: (coordinates: MapCoordinates) => void;
   onAddressChange: (address: string) => void;
+  imageUri?: string | null;
 };
 
-const INITIAL_REGION: Region = {
-  latitude: 14.5995,
-  longitude: 120.9842,
-  latitudeDelta: 0.025,
-  longitudeDelta: 0.025,
+const INITIAL_REGION: InitialViewState = {
+  zoom: 14,
+  center: [120.9842, 14.5995],
 };
 
-export default function LocationMapPicker({ value, address, onChange, onAddressChange }: Props) {
+const initialViewState = (value: MapCoordinates | null): InitialViewState => value ? {
+  zoom: 14,
+  center: [value.longitude, value.latitude],
+} : INITIAL_REGION;
+
+export default function LocationMapPicker({ value, address, onChange, onAddressChange, imageUri }: Props) {
   const [loading, setLoading] = useState(false);
-  const [map, setMap] = useState<MapView | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const cameraRef = useRef<CameraRef>(null);
+  useEffect(() => { void getToken().then(setToken); }, []);
 
   const selectLocation = async (coordinates: MapCoordinates) => {
     onChange(coordinates);
@@ -60,7 +69,7 @@ export default function LocationMapPicker({ value, address, onChange, onAddressC
       const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       const coordinates = { latitude: position.coords.latitude, longitude: position.coords.longitude };
       await selectLocation(coordinates);
-      map?.animateToRegion({ ...coordinates, latitudeDelta: 0.005, longitudeDelta: 0.005 }, 500);
+      cameraRef.current?.flyTo({ center: [coordinates.longitude, coordinates.latitude], duration: 500 });
     } catch {
       Alert.alert('Location unavailable', 'Unable to retrieve your current location.');
     } finally {
@@ -70,14 +79,10 @@ export default function LocationMapPicker({ value, address, onChange, onAddressC
 
   return (
     <View style={styles.container}>
-      <MapView
-        ref={setMap}
-        style={styles.map}
-        initialRegion={value ? { ...value, latitudeDelta: 0.025, longitudeDelta: 0.025 } : INITIAL_REGION}
-        onPress={(event) => void selectLocation(event.nativeEvent.coordinate)}
-      >
-        {value && <Marker coordinate={value} draggable onDragEnd={(event) => void selectLocation(event.nativeEvent.coordinate)} />}
-      </MapView>
+      <Map style={styles.map} mapStyle="https://tiles.openfreemap.org/styles/liberty" onPress={(event) => void selectLocation({ latitude: event.nativeEvent.lngLat[1], longitude: event.nativeEvent.lngLat[0] })}>
+        <Camera ref={cameraRef} initialViewState={initialViewState(value)} />
+        {value && <Marker lngLat={[value.longitude, value.latitude]}><View style={styles.marker}>{imageUri ? <Image source={{ uri: resolveMediaUrl(imageUri || ''), headers: token ? { Authorization: `Bearer ${token}` } : undefined }} style={styles.markerImage} contentFit="cover" /> : <Ionicons name="location" size={18} color="#FFFFFF" />}</View></Marker>}
+      </Map>
       <Pressable style={styles.locationButton} onPress={useCurrentLocation} disabled={loading}>
         {loading ? <ActivityIndicator color={colors.primary} /> : <Ionicons name="locate-outline" size={21} color={colors.primary} />}
       </Pressable>
@@ -95,4 +100,5 @@ const styles = StyleSheet.create({
   locationButton: { position: 'absolute', right: 12, top: 12, width: 44, height: 44, borderRadius: 14, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', elevation: 4 },
   footer: { flexDirection: 'row', alignItems: 'center', padding: 13, gap: 8 },
   coordinates: { flex: 1, fontSize: 12, color: colors.textMuted },
+  marker: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, borderWidth: 3, borderColor: colors.surface, overflow: 'hidden' }, markerImage: { width: '100%', height: '100%' },
 });

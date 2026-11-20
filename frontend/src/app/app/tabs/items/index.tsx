@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -20,8 +20,10 @@ import { getItems } from '@/api/items';
 import { getToken } from '@/utils/auth';
 import type { Item } from '@/types/item';
 import { resolveMediaUrl } from '@/utils/media';
+import ItemsMap from '@/components/items/ItemsMap';
 
-type ViewMode = 'list' | 'grid';
+type ViewMode = 'list' | 'grid' | 'map';
+type MapRegion = { latitude: number; longitude: number; latitudeDelta: number; longitudeDelta: number };
 
 const CARD_GAP = 12;
 const SIDE_PADDING = 20;
@@ -65,7 +67,34 @@ export default function ItemsScreen() {
   };
 
   const isGrid = viewMode === 'grid';
+  const isMap = viewMode === 'map';
   const borrowedCount = items.filter((item) => item.status === 'borrowed').length;
+  const mappedItems = useMemo(
+    () => items.filter((item) => item.location?.latitude != null && item.location?.longitude != null),
+    [items],
+  );
+  const unmappedItems = items.length - mappedItems.length;
+  const mapRegion = useMemo<MapRegion>(() => {
+    if (mappedItems.length === 0) {
+      return { latitude: 14.5995, longitude: 120.9842, latitudeDelta: 0.12, longitudeDelta: 0.12 };
+    }
+
+    const coordinates = mappedItems.map((item) => ({
+      latitude: Number(item.location?.latitude),
+      longitude: Number(item.location?.longitude),
+    }));
+    const latitudes = coordinates.map((coordinate) => coordinate.latitude);
+    const longitudes = coordinates.map((coordinate) => coordinate.longitude);
+    const latitudeSpan = Math.max(Math.max(...latitudes) - Math.min(...latitudes), 0.02);
+    const longitudeSpan = Math.max(Math.max(...longitudes) - Math.min(...longitudes), 0.02);
+
+    return {
+      latitude: (Math.max(...latitudes) + Math.min(...latitudes)) / 2,
+      longitude: (Math.max(...longitudes) + Math.min(...longitudes)) / 2,
+      latitudeDelta: Math.min(latitudeSpan * 1.6, 140),
+      longitudeDelta: Math.min(longitudeSpan * 1.6, 140),
+    };
+  }, [mappedItems]);
   const cardWidth = isGrid
     ? Math.max(130, (width - SIDE_PADDING * 2 - CARD_GAP) / 2)
     : Math.max(200, width - SIDE_PADDING * 2);
@@ -103,7 +132,7 @@ export default function ItemsScreen() {
 
       {items.length > 0 && (
         <View style={styles.toolbar}>
-          <Text style={styles.sectionLabel}>YOUR COLLECTION</Text>
+          <Text style={styles.sectionLabel}>YOUR COLLECTIONa</Text>
           <View style={styles.viewToggle}>
             <TouchableOpacity
               style={[styles.viewToggleButton, !isGrid && styles.viewToggleButtonActive]}
@@ -123,11 +152,26 @@ export default function ItemsScreen() {
             >
               <Ionicons name="grid" size={17} color={isGrid ? '#FFFFFF' : colors.textMuted} />
             </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.viewToggleButton, isMap && styles.viewToggleButtonActive]}
+              onPress={() => setViewMode('map')}
+              accessibilityRole="button"
+              accessibilityLabel="Map view"
+              accessibilityState={{ selected: isMap }}
+            >
+              <Ionicons name="map-outline" size={18} color={isMap ? '#FFFFFF' : colors.textMuted} />
+            </TouchableOpacity>
           </View>
         </View>
       )}
 
-      <FlatList
+      {isMap ? (
+        <MapItemsView
+          items={mappedItems}
+          unmappedItems={unmappedItems}
+          region={mapRegion}
+        />
+      ) : <FlatList
         key={viewMode}
         data={listData}
         numColumns={isGrid ? 2 : 1}
@@ -156,9 +200,21 @@ export default function ItemsScreen() {
             </TouchableOpacity>
           </View>
         }
-      />
+      />}
     </View>
   );
+}
+
+function MapItemsView({
+  items,
+  unmappedItems,
+  region,
+}: {
+  items: Item[];
+  unmappedItems: number;
+  region: MapRegion;
+}) {
+  return <ItemsMap items={items} unmappedItems={unmappedItems} region={region} />;
 }
 
 function ItemCard({

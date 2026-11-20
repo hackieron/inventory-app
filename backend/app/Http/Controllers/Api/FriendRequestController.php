@@ -7,10 +7,22 @@ use App\Models\FriendRequest;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 
 class FriendRequestController extends Controller
 {
+    public function avatar(Request $request, User $user)
+    {
+        abort_unless(
+            $request->user()->contacts()->where('contact_user_id', $user->id)->exists()
+                && $user->avatar
+                && Storage::disk('local')->exists($user->avatar),
+            404
+        );
+
+        return response()->file(Storage::disk('local')->path($user->avatar));
+    }
     public function users(Request $request): JsonResponse
     {
         $query = trim((string) $request->query('query', ''));

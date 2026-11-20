@@ -118,7 +118,7 @@ function EditScreen({ item, onCancel, onSaved }: { item: Item; onCancel: () => v
         showRemove={false}
         onChange={(image) => setField('image', image)}
       />
-      <EditItemForm values={values} setField={setField} />
+      <EditItemForm values={values} setField={setField} imageUri={values.image?.uri || item.image_url} />
     </ScrollView>
     <View style={[s.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
       <Pressable accessibilityRole="button" disabled={loading} onPress={handleSave} style={[s.save, loading && { opacity: 0.6 }]}>

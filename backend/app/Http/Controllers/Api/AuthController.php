@@ -7,6 +7,8 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use OpenApi\Attributes as OA;
 
@@ -209,5 +211,82 @@ class AuthController extends Controller
         return response()->json([
             'user' => $request->user()->load('contacts'),
         ]);
+    }
+
+    public function profile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        return response()->json([
+            'data' => [
+                'user' => $user->only(['id', 'name', 'email', 'avatar', 'email_verified_at', 'created_at']),
+                'stats' => [
+                    'items_count' => $user->items()->count(),
+                    'borrowed_items_count' => $user->items()->where('status', 'borrowed')->count(),
+                    'contacts_count' => $user->contacts()->whereNotNull('contact_user_id')->count(),
+                ],
+            ],
+        ]);
+    }
+
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+        ]);
+
+        $user->update($validated);
+
+        return response()->json([
+            'message' => 'Profile updated successfully.',
+            'data' => $user->only(['id', 'name', 'email', 'avatar', 'email_verified_at', 'created_at']),
+        ]);
+    }
+
+    public function updateAvatar(Request $request): JsonResponse
+    {
+        $request->validate([
+            'avatar' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ]);
+
+        $user = $request->user();
+        if ($user->avatar) {
+            Storage::disk('local')->delete($user->avatar);
+        }
+
+        $user->update(['avatar' => $request->file('avatar')->store('avatars', 'local')]);
+
+        return response()->json([
+            'message' => 'Profile picture updated successfully.',
+            'data' => $user->only(['id', 'name', 'email', 'avatar', 'email_verified_at', 'created_at']),
+        ]);
+    }
+
+    public function avatar(Request $request)
+    {
+        $user = $request->user();
+        abort_unless($user->avatar && Storage::disk('local')->exists($user->avatar), 404);
+
+        return response()->file(Storage::disk('local')->path($user->avatar));
+    }
+
+    public function updatePassword(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        if (!Hash::check($validated['current_password'], $request->user()->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['The current password is incorrect.'],
+            ]);
+        }
+
+        $request->user()->update(['password' => $validated['password']]);
+
+        return response()->json(['message' => 'Password updated successfully.']);
     }
 }

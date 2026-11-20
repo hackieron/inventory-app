@@ -5,6 +5,8 @@ function isLocalHost(hostname: string) {
 }
 
 /** Resolve Laravel-generated localhost asset URLs against the Expo API host. */
+export function resolveMediaUrl(value: string): string;
+export function resolveMediaUrl(value?: string | null): string | null;
 export function resolveMediaUrl(value?: string | null): string | null {
   if (!value) return null;
 
@@ -12,7 +14,13 @@ export function resolveMediaUrl(value?: string | null): string | null {
     const assetUrl = new URL(value);
     const configuredUrl = new URL(apiUrl);
 
-    if (!isLocalHost(assetUrl.hostname)) return value;
+    // Cloudflare tunnels redirect HTTP to HTTPS. Browsers reject that redirect
+    // during authenticated CORS/preflight image requests, so normalize remote
+    // asset URLs before React Native/Web fetches them.
+    if (!isLocalHost(assetUrl.hostname)) {
+      if (assetUrl.protocol === 'http:') assetUrl.protocol = 'https:';
+      return assetUrl.toString();
+    }
 
     return `${configuredUrl.origin}${assetUrl.pathname}${assetUrl.search}`;
   } catch {
